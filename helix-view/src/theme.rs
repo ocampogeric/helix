@@ -9,7 +9,7 @@ use helix_core::hashmap;
 use helix_loader::merge_toml_values;
 use log::warn;
 use once_cell::sync::Lazy;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use toml::{map::Map, Value};
 
 use crate::graphics::UnderlineStyle;
@@ -19,10 +19,21 @@ pub static DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
     let bytes = include_bytes!("../../theme.toml");
     toml::from_str(str::from_utf8(bytes).unwrap()).expect("Failed to parse base default theme")
 });
+pub static DEFAULT_LIGHT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
+    let bytes = include_bytes!("../../theme_light.toml");
+    toml::from_str(str::from_utf8(bytes).unwrap())
+        .expect("Failed to parse base default light theme")
+});
 
 pub static BASE16_DEFAULT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
     let bytes = include_bytes!("../../base16_theme.toml");
     toml::from_str(str::from_utf8(bytes).unwrap()).expect("Failed to parse base 16 default theme")
+});
+
+pub static BASE16_DEFAULT_LIGHT_THEME_DATA: Lazy<Value> = Lazy::new(|| {
+    let bytes = include_bytes!("../../base16_theme_light.toml");
+    toml::from_str(str::from_utf8(bytes).unwrap())
+        .expect("Failed to parse base 16 default light theme")
 });
 
 pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
@@ -30,9 +41,19 @@ pub static DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
     ..Theme::from(DEFAULT_THEME_DATA.clone())
 });
 
+pub static DEFAULT_LIGHT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
+    name: "default_light".into(),
+    ..Theme::from(DEFAULT_LIGHT_THEME_DATA.clone())
+});
+
 pub static BASE16_DEFAULT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
     name: "base16_default".into(),
     ..Theme::from(BASE16_DEFAULT_THEME_DATA.clone())
+});
+
+pub static BASE16_DEFAULT_LIGHT_THEME: Lazy<Theme> = Lazy::new(|| Theme {
+    name: "base16_default_light".into(),
+    ..Theme::from(DEFAULT_THEME_DATA.clone())
 });
 
 #[derive(Clone, Debug)]
@@ -56,8 +77,14 @@ impl Loader {
         if name == "default" {
             return Ok(self.default());
         }
+        if name == "default_light" {
+            return Ok(self.default_light());
+        }
         if name == "base16_default" {
             return Ok(self.base16_default());
+        }
+        if name == "base16_default_light" {
+            return Ok(self.base16_default_light());
         }
 
         let mut visited_paths = HashSet::new();
@@ -96,7 +123,9 @@ impl Loader {
             let parent_theme_toml = match parent_theme_name {
                 // load default themes's toml from const.
                 "default" => DEFAULT_THEME_DATA.clone(),
+                "default_light" => DEFAULT_LIGHT_THEME_DATA.clone(),
                 "base16_default" => BASE16_DEFAULT_THEME_DATA.clone(),
+                "base16_default_light" => BASE16_DEFAULT_LIGHT_THEME_DATA.clone(),
                 _ => self.load_theme(parent_theme_name, visited_paths)?,
             };
 
@@ -195,15 +224,31 @@ impl Loader {
             self.base16_default()
         }
     }
+    pub fn default_light_theme(&self, true_color: bool) -> Theme {
+        if true_color {
+            self.default_light()
+        } else {
+            self.base16_default_light()
+        }
+    }
 
     /// Returns the default theme
     pub fn default(&self) -> Theme {
         DEFAULT_THEME.clone()
     }
 
+    /// Returns the default light theme
+    pub fn default_light(&self) -> Theme {
+        DEFAULT_LIGHT_THEME.clone()
+    }
+
     /// Returns the alternative 16-color default theme
     pub fn base16_default(&self) -> Theme {
         BASE16_DEFAULT_THEME.clone()
+    }
+    /// Returns the alternative 16-color default light theme
+    pub fn base16_default_light(&self) -> Theme {
+        BASE16_DEFAULT_LIGHT_THEME.clone()
     }
 }
 
@@ -348,6 +393,57 @@ impl Theme {
                 .into_iter()
                 .all(|color| !matches!(color, Some(Color::Rgb(..))))
         })
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct Config {
+    /// Used to define default theme mode, available options: ["light", "dark", "auto"].
+    /// auto = try to retireve theme mode from system settings.
+    pub default_theme_mode: Option<String>,
+    pub light_theme_variant: Option<String>,
+    pub dark_theme_variant: Option<String>,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            default_theme_mode: Some(String::from("auto")),
+            light_theme_variant: Some(String::from("default_light")),
+            dark_theme_variant: Some(String::from("default")),
+        }
+    }
+}
+
+impl Config {
+    pub fn new(
+        default_theme_mode: Option<String>,
+        default_light_variant: Option<String>,
+        default_dark_variant: Option<String>,
+    ) -> Self {
+        let Config {
+            default_theme_mode: mut default,
+            light_theme_variant: mut default_light,
+            dark_theme_variant: mut default_dark,
+        } = Config::default();
+
+        default = match default_theme_mode {
+            Some(value) => Some(value),
+            None => default,
+        };
+        default_light = match default_light_variant {
+            Some(value) => Some(value),
+            None => default_light,
+        };
+        default_dark = match default_dark_variant {
+            Some(value) => Some(value),
+            None => default_dark,
+        };
+        Self {
+            default_theme_mode: default,
+            light_theme_variant: default_light,
+            dark_theme_variant: default_dark,
+        }
     }
 }
 

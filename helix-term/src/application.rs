@@ -37,6 +37,7 @@ use std::{
 };
 
 use anyhow::{Context, Error};
+use dark_light;
 
 use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
 #[cfg(not(windows))]
@@ -114,8 +115,17 @@ impl Application {
         let mut theme_parent_dirs = vec![helix_loader::config_dir()];
         theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
         let theme_loader = std::sync::Arc::new(theme::Loader::new(&theme_parent_dirs));
-
+        let mode = dark_light::detect();
         let true_color = config.editor.true_color || crate::true_color();
+        // Default theme will be dark if can't be defined by system preferences or config file.
+        let dark_mode: bool = match config.appearance.default_theme_mode.as_deref() {
+            Some("light") | None => false,
+            Some("auto") => match mode {
+                dark_light::Mode::Dark => true,
+                dark_light::Mode::Light | dark_light::Mode::Default => false,
+            },
+            Some("dark") | Some(&_) => true,
+        };
         let theme = config
             .theme
             .as_ref()
@@ -129,7 +139,10 @@ impl Application {
                     .ok()
                     .filter(|theme| (true_color || theme.is_16_color()))
             })
-            .unwrap_or_else(|| theme_loader.default_theme(true_color));
+            .unwrap_or_else(|| match dark_mode {
+                true => theme_loader.default_theme(true_color),
+                false => theme_loader.default_light_theme(true_color),
+            });
 
         let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
 
