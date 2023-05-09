@@ -115,19 +115,36 @@ impl Application {
         let mut theme_parent_dirs = vec![helix_loader::config_dir()];
         theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
         let theme_loader = std::sync::Arc::new(theme::Loader::new(&theme_parent_dirs));
-        let mode = dark_light::detect();
         let true_color = config.editor.true_color || crate::true_color();
+        
+        
+        
+
+
+
         // Default theme will be dark if can't be defined by system preferences or config file.
-        let dark_mode: bool = match config.appearance.default_theme_mode.as_deref() {
-            Some("light") | None => false,
-            Some("auto") => match mode {
-                dark_light::Mode::Dark => true,
-                dark_light::Mode::Light | dark_light::Mode::Default => false,
+        let mode = dark_light::detect();
+        let config_light_theme_variant = &config.appearance.light_theme_variant;
+        let config_dark_theme_variant = &config.appearance.dark_theme_variant;
+
+        let mut dark_mode:bool = true;
+        let theme_variant = match config.appearance.default_theme_mode.as_deref() {
+            Some("light") | None =>  {
+                dark_mode = false;
+                config_light_theme_variant
             },
-            Some("dark") | Some(&_) => true,
+            Some("auto") => match mode {
+                dark_light::Mode::Dark | dark_light::Mode::Default => config_dark_theme_variant,
+                dark_light::Mode::Light => {
+                    dark_mode = false;
+                    config_light_theme_variant
+                },
+            }, 
+            Some("dark") | Some(&_) => config_dark_theme_variant,
+                       
         };
-        let theme = config
-            .theme
+        
+        let theme = theme_variant
             .as_ref()
             .and_then(|theme| {
                 theme_loader
