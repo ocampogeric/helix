@@ -62,6 +62,7 @@ impl Config {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     #[test]
@@ -106,5 +107,33 @@ mod tests {
         // From the Default trait
         let default_keys = Config::default().keys;
         assert_eq!(default_keys, default());
+    }
+
+    #[test]
+    fn parse_appearance_config_default_dark() {
+
+        let appearance_config = toml::from_str::
+        <Config>(r#"
+        [appearance]
+        default-theme-mode="dark"
+        "#).unwrap().appearance;
+
+        assert_eq!(Some("dark"), appearance_config.default_theme_mode.as_deref());
+        assert_eq!(Some("default"), appearance_config.dark_theme_variant.as_deref());
+            
+    }
+
+    #[test]
+    fn parse_appearance_config_dark_variant() {
+
+        let appearance_config = toml::from_str::
+        <Config>(r#"
+        [appearance]
+        default-theme-mode="dark"
+        dark-theme-variant="everforest_dark"
+        "#).unwrap().appearance;
+
+        assert_eq!(Some("dark"), appearance_config.default_theme_mode.as_deref());
+        assert_eq!(Some("everforest_dark"), appearance_config.dark_theme_variant.as_deref());
     }
 }
