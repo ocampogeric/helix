@@ -228,6 +228,8 @@ We use a similar set of scopes as
   - `list`
     - `unnumbered`
     - `numbered`
+    - `checked`
+    - `unchecked`
   - `bold`
   - `italic`
   - `strikethrough`
@@ -276,8 +278,11 @@ These scopes are used for theming the editor interface:
 | `ui.cursor.primary.normal`        |                                                                                                |
 | `ui.cursor.primary.insert`        |                                                                                                |
 | `ui.cursor.primary.select`        |                                                                                                |
+| `ui.debug.breakpoint`             | Breakpoint indicator, found in the gutter                                                      |
+| `ui.debug.active`                 | Indicator for the line at which debugging execution is paused at, found in the gutter          |
 | `ui.gutter`                       | Gutter                                                                                         |
 | `ui.gutter.selected`              | Gutter for the line the cursor is on                                                           |
+| `ui.highlight.frameline`          | Line at which debugging execution is paused at                                                 |
 | `ui.linenr`                       | Line numbers                                                                                   |
 | `ui.linenr.selected`              | Line number for the line the cursor is on                                                      |
 | `ui.statusline`                   | Statusline                                                                                     |
@@ -291,7 +296,7 @@ These scopes are used for theming the editor interface:
 | `ui.window`                       | Borderlines separating splits                                                                  |
 | `ui.help`                         | Description box for commands                                                                   |
 | `ui.text`                         | Command prompts, popup text, etc.                                                              |
-| `ui.text.focus`                   |                                                                                                |
+| `ui.text.focus`                   | The currently selected line in the picker                                                      |
 | `ui.text.inactive`                | Same as `ui.text` but when the text is inactive (e.g. suggestions)                             |
 | `ui.text.info`                    | The key: command text in `ui.popup.info` boxes                                                 |
 | `ui.virtual.ruler`                | Ruler columns (see the [`editor.rulers` config][editor-section])                               |
