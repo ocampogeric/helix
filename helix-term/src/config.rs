@@ -13,6 +13,7 @@ use toml::de::Error as TomlError;
 pub struct Config {
     pub theme: Option<String>,
     pub keys: HashMap<Mode, KeyTrie>,
+    pub appearance: helix_view::theme::Config,
     pub editor: helix_view::editor::Config,
 }
 
@@ -20,8 +21,7 @@ pub struct Config {
 #[serde(deny_unknown_fields)]
 pub struct ConfigRaw {
     pub theme: Option<String>,
-
-    pub appearance: helix_view::theme::Config,
+    pub appearance: Option<toml::Value>,
     pub keys: Option<HashMap<Mode, KeyTrie>>,
     pub editor: Option<toml::Value>,
 }
@@ -86,11 +86,22 @@ impl Config {
                         .try_into()
                         .map_err(ConfigLoadError::BadConfig)?,
                 };
-
+                let appearance: helix_view::theme::Config = match (global.appearance, local.appearance) {
+                    (None, None) => helix_view::theme::Config::default(),
+                    (None, Some(val)) | (Some(val), None) => {
+                        print!("{}", val);
+                        val.try_into().map_err(ConfigLoadError::BadConfig)?
+                    }
+                    (Some(global), Some(local)) => merge_toml_values(global, local, 3)
+                        .try_into()
+                        .map_err(ConfigLoadError::BadConfig)?,
+                };
+            
                 Config {
                     theme: local.theme.or(global.theme),
                     keys,
                     editor,
+                    appearance,
                 }
             }
             // if any configs are invalid return that first
@@ -104,6 +115,9 @@ impl Config {
                     merge_keys(&mut keys, keymap);
                 }
                 Config {
+                    appearance: config.appearance.map_or_else(|| Ok(helix_view::theme::Config::default()),
+                        |val| val.try_into().map_err(ConfigLoadError::BadConfig)
+                    )?,
                     theme: config.theme,
                     keys,
                     editor: config.editor.map_or_else(
@@ -191,12 +205,11 @@ mod tests {
     #[test]
     fn parse_appearance_config_default_dark() {
 
-        let appearance_config = toml::from_str::
-        <Config>(r#"
+        let appearance_config = Config::load_test(r#"
         [appearance]
         default-theme-mode="dark"
-        "#).unwrap().appearance;
-
+        "#).appearance;
+        
         assert_eq!(Some("dark"), appearance_config.default_theme_mode.as_deref());
         assert_eq!(Some("default"), appearance_config.dark_theme_variant.as_deref());
             
@@ -205,13 +218,12 @@ mod tests {
     #[test]
     fn parse_appearance_config_dark_variant() {
 
-        let appearance_config = toml::from_str::
-        <Config>(r#"
+        let appearance_config = Config::load_test(r#"
         [appearance]
         default-theme-mode="dark"
         dark-theme-variant="everforest_dark"
-        "#).unwrap().appearance;
-
+        "#).appearance;
+        println!("{:#?}", appearance_config);
         assert_eq!(Some("dark"), appearance_config.default_theme_mode.as_deref());
         assert_eq!(Some("everforest_dark"), appearance_config.dark_theme_variant.as_deref());
     }
